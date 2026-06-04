@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Acciones Diarias — BML Collection</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1f2;--s1:#ffffff;--s2:#faf7f8;--s3:#f0eaeb;--bd:#e0d4d6;
+  --txt:#1a0d0f;--muted:#8a6068;--dim:#e8dfe0;
+  --f:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --burdo:#8b1c2a;--burdo-light:#c42840;--burdo-bright:#e8304a;
+  --green:#1a9e6a;--amber:#d97706;--blue:#0ea5e9;--purple:#7c3aed;
+  --c-ivr:#0ea5e9;--c-mail:#d97706;--c-call_pred:#7c3aed;
+  --c-call_ope:#1a9e6a;--c-sms_corto:#e8304a;--c-sms_largo:#c42840;
+  --c-whatsapp:#059669;--c-voicebot:#6366f1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--f);font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* TOPBAR */
+.topbar{background:var(--burdo);padding:0 18px;display:flex;align-items:center;gap:16px;flex-shrink:0;min-height:52px}
+.topbar-logo{display:flex;align-items:center;gap:10px;border-right:1px solid rgba(255,255,255,.2);padding-right:16px}
+.logo-svg{width:38px;height:38px}
+.logo-text{color:#fff;font-size:13px;font-weight:600;line-height:1.2}
+.logo-text small{display:block;font-size:9px;font-weight:400;opacity:.65;letter-spacing:.04em;text-transform:uppercase}
+.topbar-title{color:#fff;font-size:15px;font-weight:600;letter-spacing:.01em;flex:1;text-align:center;text-transform:uppercase;letter-spacing:.12em}
+.topbar-date{color:rgba(255,255,255,.6);font-size:10px;font-family:var(--fm)}
+
+/* FILTROS — 3 filas */
+.filter-bar{background:var(--s1);border-bottom:2px solid var(--burdo);padding:5px 18px;flex-shrink:0;display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.filter-row{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;min-height:26px}
+.filter-label{font-size:10px;color:var(--burdo);font-weight:700;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;min-width:52px;flex-shrink:0}
+.chips-row{display:flex;flex-direction:row;flex-wrap:wrap;gap:3px;align-items:center}
+.chip{padding:2px 8px;border-radius:20px;border:1px solid var(--bd);background:none;color:var(--muted);font-size:10px;cursor:pointer;transition:all .12s;font-family:var(--f);white-space:nowrap}
+.chip:hover{border-color:var(--burdo-light);color:var(--burdo-light)}
+.chip.on{border-color:var(--burdo-light);background:rgba(196,40,64,.1);color:var(--burdo-light);font-weight:600}
+.filter-sep{display:none}
+.btn-reset{padding:2px 10px;border-radius:20px;border:1px solid rgba(139,28,42,.4);background:rgba(139,28,42,.06);color:var(--burdo);font-size:10px;cursor:pointer;font-family:var(--f);font-weight:600;white-space:nowrap}
+.btn-reset:hover{background:rgba(139,28,42,.12)}
+
+/* KPI strip */
+.kpi-strip{background:var(--s2);border-bottom:1px solid var(--bd);padding:7px 18px;display:flex;gap:8px;flex-shrink:0;overflow-x:auto}
+.kpi{background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:7px 13px;min-width:130px;position:relative;overflow:hidden;flex-shrink:0}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.b::before{background:linear-gradient(90deg,var(--burdo-light),var(--burdo-bright))}
+.kpi.g::before{background:var(--green)}.kpi.a::before{background:var(--amber)}.kpi.bl::before{background:var(--blue)}.kpi.p::before{background:var(--purple)}
+.kpi:not(.b):not(.g):not(.a):not(.bl):not(.p)::before{background:var(--kc,var(--burdo))}
+.kpi-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.kpi-v{font-size:16px;font-weight:600;font-family:var(--fm);line-height:1}
+.kpi-s{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* CONTENT */
+.content{flex:1;overflow:hidden;padding:10px 18px;display:flex;flex-direction:column}
+
+/* agrupador de dias */
+.view-toggle{display:flex;gap:5px;margin-bottom:8px;align-items:center;flex-shrink:0}
+.vtab{padding:3px 12px;border-radius:20px;border:1px solid var(--bd);background:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:var(--f);font-weight:500}
+.vtab.on{border-color:var(--burdo-light);background:rgba(196,40,64,.1);color:var(--burdo-light);font-weight:600}
+.view-label{font-size:10px;font-weight:600;color:var(--burdo);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+
+/* TABLA */
+.tbl-wrap{border-radius:8px;border:1px solid var(--bd);overflow-x:scroll;overflow-y:auto;flex:1}
+table.res{border-collapse:collapse;font-size:11px;white-space:nowrap;min-width:100%}
+table.res thead{position:sticky;top:0;z-index:10}
+table.res thead tr.hdr1 th{padding:5px 7px;text-align:center;font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid rgba(255,255,255,.2);background:var(--burdo)}
+table.res thead tr.hdr2 th{padding:5px 7px;text-align:right;font-size:9px;font-weight:600;color:var(--burdo);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--bd);background:var(--s2)}
+table.res thead th.tl{text-align:left;padding-left:10px}
+table.res thead th.stk{position:sticky;z-index:15;background:var(--burdo)}
+table.res thead tr.hdr2 th.stk{background:var(--s2);z-index:15}
+table.res thead th.stk1{left:0;min-width:72px;max-width:72px}
+table.res thead th.stk2{left:72px;min-width:130px;max-width:130px}
+table.res thead th.stk3{left:202px;min-width:120px;max-width:120px}
+table.res thead th.stk4{left:322px;min-width:90px;max-width:90px;text-align:right;box-shadow:3px 0 6px rgba(0,0,0,.08);border-right:2px solid var(--bd)}
+table.res thead th.grp-border{border-left:2px solid var(--bd)}
+
+table.res tbody tr{border-bottom:1px solid var(--bd);transition:background .1s}
+table.res tbody tr:hover{background:var(--dim)}
+table.res tbody tr.sub-total td{background:#f7eded;font-weight:600;border-top:2px solid rgba(139,28,42,.15)}
+table.res tbody tr.grand-total td{background:var(--s3);font-weight:700;border-top:2px solid var(--burdo-light)}
+table.res td{padding:5px 7px;text-align:right;font-family:var(--fm);font-size:11px}
+table.res td.tl{text-align:left;font-family:var(--f);padding-left:10px}
+table.res td.stk{position:sticky;z-index:5;background:var(--s1)}
+table.res tr.sub-total td.stk{background:#f7eded}
+table.res tr.grand-total td.stk{background:var(--s3)}
+table.res tbody tr:hover td.stk{background:var(--dim)}
+table.res td.stk1{left:0;min-width:72px;max-width:72px}
+table.res td.stk2{left:72px;min-width:130px;max-width:130px}
+table.res td.stk3{left:202px;min-width:120px;max-width:120px}
+table.res td.stk4{left:322px;min-width:90px;max-width:90px;text-align:right;box-shadow:3px 0 6px rgba(0,0,0,.08);border-right:2px solid var(--bd);color:var(--muted);font-size:10px}
+table.res td.grp-border{border-left:2px solid var(--bd)}
+.zero{color:#d4c4c6}
+/* Total Mes — sticky RIGHT */
+table.res th.stkR,table.res td.stkR{position:sticky;right:0;z-index:6;background:var(--s1);border-left:2px solid var(--burdo-light);font-weight:700;min-width:90px;text-align:right}
+table.res tbody tr:hover td.stkR{background:var(--dim)}
+table.res tr.sub-total td.stkR{background:#f7eded}
+table.res tr.grand-total td.stkR{background:var(--s3);color:var(--burdo-light)}
+table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important;z-index:20 !important}
+.heat-hi{font-weight:700;color:var(--burdo-light)}
+.heat-md{color:var(--burdo)}
+.heat-lo{color:var(--muted)}
+
+/* canal badge */
+.canal-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;flex-shrink:0}
+.canal-lbl{display:inline-flex;align-items:center}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg class="logo-svg" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="30" cy="30" r="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+      <text x="30" y="36" text-anchor="middle" fill="white" font-size="18" font-weight="700" font-family="DM Sans,sans-serif">bml</text>
+    </svg>
+    <div class="logo-text">BML Collection</div>
+  </div>
+  <div class="topbar-title">Resumen Acciones Diarias</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+    <div class="topbar-date" id="topbar-date">—</div>
+    <div class="topbar-date" id="topbar-update" style="opacity:.45;font-size:9px">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Cargando...
+    </div>
+  </div>
+</div>
+
+<!-- FILTROS — 3 filas -->
+<div class="filter-bar">
+  <div class="filter-row">
+    <span class="filter-label">Canal</span>
+    <div id="chips-canal" class="chips-row"></div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Tramo</span>
+    <div id="chips-tramo" class="chips-row"></div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Entidad</span>
+    <div id="chips-entidad" class="chips-row"></div>
+    <button class="btn-reset" onclick="resetFilters()" style="margin-left:8px">✕ Limpiar</button>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip" id="kpi-strip"></div>
+
+<!-- CONTENT -->
+<div class="content">
+  <div class="view-toggle">
+    <span class="view-label">Vista:</span>
+    <button class="vtab on" id="vt-todos" onclick="setView('todos')">Todos los días</button>
+    <button class="vtab" id="vt-activos" onclick="setView('activos')">Solo días activos</button>
+    <button class="vtab" id="vt-canal" onclick="setView('canal')">Pivot por canal</button>
+    <span style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--fm)" id="count-label"></span>
+  </div>
+  <div class="tbl-wrap">
+    <table class="res" id="main-table"></table>
+  </div>
+</div>
+
+<script>
+// ── CARGA CSV desde GitHub ──────────────────────────────────────────────────
+const GH_USER = 'francysvirginia16';
+const GH_REPO = 'acciones_diarias';
+const GH_FILE = 'acciones_mensuales.csv';
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    // handle quoted fields (e.g. "1) 0 a 30")
+    const cols = [];
+    let cur = '', inQ = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur);
+    if (cols.length < 36) continue;
+    const dias = [];
+    for (let d = 4; d <= 34; d++) dias.push(parseInt(cols[d]) || 0);
+    rows.push({
+      entidad:      cols[0].trim(),
+      tramo:        cols[1].trim(),
+      casos_activos: parseInt(cols[2]) || 0,
+      tipo_accion:  cols[3].trim(),
+      dias:         dias,
+      total_mes:    parseInt(cols[35]) || 0
+    });
+  }
+  return rows;
+}
+
+let RAW = [];
+const CANAL_COLORS={ivr:'#0ea5e9',mail:'#d97706',call_pred:'#7c3aed',call_ope:'#1a9e6a',sms_corto:'#e8304a',sms_largo:'#c42840',whatsapp:'#059669',voicebot:'#6366f1'};
+const TRAMO_ORDER=['1) 0 a 30','2) 31 a 60','3) 61 a 90','4) 91 a 120','5) 121 a 180','6) 181 a 360','7) >360'];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let fCanal=new Set(), fTramo=new Set(), fEntidad=new Set(), viewMode='todos';
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt=n=>n?n.toLocaleString('es-AR'):'—';
+const fmtZ=n=>n?n.toLocaleString('es-AR'):'';
+
+function filtered(){
+  return RAW.filter(r=>
+    (fCanal.size===0||fCanal.has(r.tipo_accion))&&
+    (fTramo.size===0||fTramo.has(r.tramo))&&
+    (fEntidad.size===0||fEntidad.has(r.entidad))
+  );
+}
+
+function activeDays(data){
+  const cols=[];
+  for(let d=0;d<31;d++){
+    if(data.some(r=>(r.dias[d]||0)>0)) cols.push(d);
+  }
+  return cols;
+}
+
+function heatClass(v,max){
+  if(!v) return 'zero';
+  return '';
+}
+
+// ─── CHIPS ───────────────────────────────────────────────────────────────────
+function buildChips(){
+  const canales=[...new Set(RAW.map(r=>r.tipo_accion))].sort();
+  const tramos=TRAMO_ORDER.filter(t=>RAW.some(r=>r.tramo===t));
+  const entidades=[...new Set(RAW.map(r=>r.entidad))].sort();
+
+  document.getElementById('chips-canal').innerHTML=canales.map(c=>`<button class="chip" data-type="canal" data-val="${c}" onclick="toggleChip(this,'canal')" style="border-left:3px solid ${CANAL_COLORS[c]||'#aaa'}">${c}</button>`).join('');
+  document.getElementById('chips-tramo').innerHTML=tramos.map(t=>`<button class="chip" data-type="tramo" data-val="${t}" onclick="toggleChip(this,'tramo')">${t}</button>`).join('');
+  document.getElementById('chips-entidad').innerHTML=entidades.map(e=>`<button class="chip" data-type="entidad" data-val="${e}" onclick="toggleChip(this,'entidad')">${e}</button>`).join('');
+
+  // fecha
+  // La fecha se setea desde el commit de GitHub o al buildChips
+  const hoy = new Date();
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const diasConDatos = Array.from({length:31},(_,i)=>i).filter(d=>RAW.some(r=>(r.dias[d]||0)>0));
+  const esMesActual = diasConDatos.length <= 15;
+  const fechaRef = esMesActual ? hoy : new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  const mesLabel = meses[fechaRef.getMonth()] + ' ' + fechaRef.getFullYear();
+  if(document.getElementById('topbar-date').textContent === '—')
+    document.getElementById('topbar-date').textContent = 'Datos: ' + mesLabel;
+}
+
+function toggleChip(btn,type){
+  const val=btn.dataset.val;
+  const map={canal:fCanal,tramo:fTramo,entidad:fEntidad};
+  const s=map[type];
+  if(s.has(val)){s.delete(val);btn.classList.remove('on');}
+  else{s.add(val);btn.classList.add('on');}
+  render();
+}
+
+function resetFilters(){
+  fCanal.clear();fTramo.clear();fEntidad.clear();
+  document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
+  render();
+}
+
+function setView(v){
+  viewMode=v;
+  document.querySelectorAll('.vtab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('vt-'+v).classList.add('on');
+  render();
+}
+
+// ─── KPIs ────────────────────────────────────────────────────────────────────
+function renderKPIs(data){
+  const total=data.reduce((s,r)=>s+r.total_mes,0);
+  const byCanal={};
+  data.forEach(r=>{byCanal[r.tipo_accion]=(byCanal[r.tipo_accion]||0)+r.total_mes;});
+  const canalesOrden=['ivr','mail','call_pred','call_ope','sms_corto','sms_largo','whatsapp','voicebot'];
+  const todosCanales=[...new Set([...canalesOrden,...Object.keys(byCanal)])].filter(c=>byCanal[c]>0);
+
+  // casos activos: tomar el max por entidad+tramo (evitar duplicados por canal)
+  const casosMap={};
+  data.forEach(r=>{const k=r.entidad+'|'+r.tramo;if(!casosMap[k])casosMap[k]=r.casos_activos||0;});
+  const totalCasos=Object.values(casosMap).reduce((s,v)=>s+v,0);
+  let kpiHtml=`<div class="kpi b"><div class="kpi-l">Total Mes</div><div class="kpi-v">${fmt(total)}</div><div class="kpi-s">todas las acciones</div></div>`;
+  kpiHtml+=`<div class="kpi" style="--kc:var(--burdo)"><div class="kpi-l">Casos Activos</div><div class="kpi-v">${fmt(totalCasos)}</div><div class="kpi-s">suma por entidad/tramo</div></div>`;
+  todosCanales.forEach(c=>{
+    const v=byCanal[c]||0;
+    if(!v) return;
+    const col=CANAL_COLORS[c]||'var(--burdo)';
+    kpiHtml+=`<div class="kpi" style="--kc:${col}"><div class="kpi-l" style="display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:${col};display:inline-block;flex-shrink:0"></span>${c}</div><div class="kpi-v" style="font-size:15px">${fmt(v)}</div><div class="kpi-s">${total?((v/total)*100).toFixed(1)+'% del total':''}</div></div>`;
+  });
+  document.getElementById('kpi-strip').innerHTML=kpiHtml;
+}
+
+// ─── VISTA: TABLA POR FILA (entidad + tramo + canal, días en columnas) ────────
+function renderTableDias(data, onlyActive){
+  const days = onlyActive ? activeDays(data) : Array.from({length:31},(_,i)=>i).filter(d=>data.some(r=>(r.dias[d]||0)>0)||!onlyActive);
+  const showDays = onlyActive ? activeDays(data) : Array.from({length:31},(_,i)=>i);
+
+  // mapa casos activos por entidad+tramo (tomar el max, evitar 0s de registros sin campo)
+  const casosMap={};
+  data.forEach(r=>{
+    const k=r.entidad+'|'+r.tramo;
+    if(!casosMap[k]||( r.casos_activos||0)>casosMap[k]) casosMap[k]=r.casos_activos||0;
+  });
+
+  // compute global max for heat
+  let gMax=0;
+  data.forEach(r=>r.dias.forEach(v=>{if(v>gMax)gMax=v;}));
+
+  // sort data
+  const sorted=[...data].sort((a,b)=>{
+    if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
+    const ti=TRAMO_ORDER.indexOf(a.tramo), tj=TRAMO_ORDER.indexOf(b.tramo);
+    if(ti!==tj) return ti-tj;
+    return a.tipo_accion.localeCompare(b.tipo_accion);
+  });
+
+  // group for subtotals: entidad+tramo
+  let html=`<thead>
+    <tr class="hdr1">
+      <th class="tl stk stk1" rowspan="2">Entidad</th>
+      <th class="tl stk stk2" rowspan="2">Tramo</th>
+      <th class="tl stk stk3" rowspan="2">Canal</th>
+      <th class="stk stk4" rowspan="2" style="text-align:right">Casos<br>Activos</th>
+      <th colspan="${showDays.length}" style="text-align:center">Días del mes</th>
+      <th class="stkR" rowspan="2" style="text-align:right;vertical-align:middle">TOTAL MES</th>
+    </tr>
+    <tr class="hdr2">
+      ${showDays.map(d=>`<th style="min-width:50px;max-width:50px">D${d+1}</th>`).join('')}
+    </tr>
+  </thead><tbody>`;
+
+  let prevKey='';
+  const subTotals={};// entidad+tramo → {dias:[],total}
+
+  sorted.forEach(r=>{
+    const key=r.entidad+'|'+r.tramo;
+    if(!subTotals[key]) subTotals[key]={dias:new Array(31).fill(0),total:0,entidad:r.entidad,tramo:r.tramo};
+    r.dias.forEach((v,i)=>subTotals[key].dias[i]+=v);
+    subTotals[key].total+=r.total_mes;
+  });
+
+  let lastEnt='', lastTramo='';
+  sorted.forEach(r=>{
+    const key=r.entidad+'|'+r.tramo;
+    // subtotal row before new group
+    if((r.entidad!==lastEnt||r.tramo!==lastTramo)&&lastTramo!==''){
+      const st=subTotals[lastEnt+'|'+lastTramo];
+      html+=`<tr class="sub-total">
+        <td class="tl stk stk1"></td>
+        <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">SUBTOTAL</td>
+        <td class="tl stk stk3" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+        <td class="stk stk4"></td>
+        ${showDays.map(d=>{const v=st.dias[d];return `<td class="${heatClass(v,gMax)}">${fmtZ(v)}</td>`;}).join('')}
+        <td class="stkR">${fmt(st.total)}</td>
+      </tr>`;
+    }
+    lastEnt=r.entidad; lastTramo=r.tramo;
+    const color=CANAL_COLORS[r.tipo_accion]||'#aaa';
+    html+=`<tr>
+      <td class="tl stk stk1"><b style="color:var(--burdo)">${r.entidad}</b></td>
+      <td class="tl stk stk2" style="font-size:10px;color:var(--muted)">${r.tramo}</td>
+      <td class="tl stk stk3"><span class="canal-lbl"><span class="canal-dot" style="background:${color}"></span>${r.tipo_accion}</span></td>
+      <td class="stk stk4" style="color:var(--muted);font-size:10px">${casosMap[r.entidad+'|'+r.tramo]?fmt(casosMap[r.entidad+'|'+r.tramo]):''}</td>
+      ${showDays.map(d=>{const v=r.dias[d]||0;return `<td class="${heatClass(v,gMax)}">${fmtZ(v)}</td>`;}).join('')}
+      <td class="stkR">${fmt(r.total_mes)}</td>
+    </tr>`;
+  });
+
+  // last subtotal
+  if(lastTramo){
+    const st=subTotals[lastEnt+'|'+lastTramo];
+    html+=`<tr class="sub-total">
+      <td class="tl stk stk1"></td>
+      <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">SUBTOTAL</td>
+      <td class="tl stk stk3" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+      <td class="stk stk4" style="color:var(--muted);font-size:10px">—</td>
+      ${showDays.map(d=>{const v=st.dias[d];return `<td class="${heatClass(v,gMax)}">${fmtZ(v)}</td>`;}).join('')}
+      <td class="stkR">${fmt(st.total)}</td>
+    </tr>`;
+  }
+
+  // grand total
+  const gtDias=new Array(31).fill(0);
+  let gtTotal=0;
+  data.forEach(r=>{r.dias.forEach((v,i)=>gtDias[i]+=v);gtTotal+=r.total_mes;});
+  html+=`<tr class="grand-total">
+    <td class="tl stk stk1">TOTAL</td>
+    <td class="stk stk2"></td>
+    <td class="tl stk stk3" style="font-style:italic">— global —</td>
+    <td class="stk stk4" style="color:var(--muted);font-size:10px">—</td>
+    ${showDays.map(d=>{const v=gtDias[d];return `<td style="font-weight:700">${fmtZ(v)}</td>`;}).join('')}
+    <td class="stkR" style="color:var(--burdo-light)">${fmt(gtTotal)}</td>
+  </tr>`;
+
+  html+='</tbody>';
+  document.getElementById('main-table').innerHTML=html;
+  document.getElementById('count-label').textContent=`${sorted.length} registros · ${showDays.length} días`;
+}
+
+// ─── VISTA: PIVOT CANAL (filas=entidad+tramo, cols=canales, sub-total por día) ──
+function renderPivotCanal(data){
+  const canales=[...new Set(data.map(r=>r.tipo_accion))].sort();
+  const showDays=activeDays(data);
+
+  // build map: entidad+tramo → canal → dias[]
+  const map={};
+  data.forEach(r=>{
+    const k=r.entidad+'||'+r.tramo;
+    if(!map[k]) map[k]={entidad:r.entidad,tramo:r.tramo,canales:{},casos:r.casos_activos||0};
+    if((r.casos_activos||0)>map[k].casos) map[k].casos=r.casos_activos||0;
+    map[k].canales[r.tipo_accion]=r.dias;
+  });
+  const rows=Object.values(map).sort((a,b)=>{
+    if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
+    return TRAMO_ORDER.indexOf(a.tramo)-TRAMO_ORDER.indexOf(b.tramo);
+  });
+
+  let gMax=0;
+  data.forEach(r=>r.dias.forEach(v=>{if(v>gMax)gMax=v;}));
+
+  // header: stickies + one col per (canal×day) grouped
+  let html=`<thead>
+    <tr class="hdr1">
+      <th class="tl stk stk1" rowspan="2">Entidad</th>
+      <th class="tl stk stk2" rowspan="2">Tramo</th>
+      <th rowspan="2" style="text-align:right;min-width:80px;padding:5px 9px;font-size:9px;font-weight:600;color:var(--burdo);text-transform:uppercase;letter-spacing:.04em;border-right:2px solid var(--bd)">Casos<br>Activos</th>
+      ${canales.map((c,i)=>`<th colspan="${showDays.length}" class="${i>0?'grp-border':''}" style="background:${CANAL_COLORS[c]||'var(--burdo)'}20;color:${CANAL_COLORS[c]||'var(--burdo)'};border-top:3px solid ${CANAL_COLORS[c]||'var(--burdo)'}">${c}</th>`).join('')}
+      <th rowspan="2" class="stkR" style="text-align:right;min-width:90px">TOTAL</th>
+    </tr>
+    <tr class="hdr2">
+      ${canales.map((c,ci)=>showDays.map((d,di)=>`<th style="min-width:42px;${ci>0&&di===0?'border-left:2px solid var(--bd)':''}">D${d+1}</th>`).join('')).join('')}
+    </tr>
+  </thead><tbody>`;
+
+  // grand totals per canal per day
+  const gtCanal={};
+  canales.forEach(c=>{gtCanal[c]=new Array(31).fill(0);});
+  let gtAll=0;
+
+  rows.forEach(row=>{
+    let rowTotal=0;
+    const daysByCanal=canales.map(c=>{
+      const dias=row.canales[c]||new Array(31).fill(0);
+      dias.forEach((v,i)=>gtCanal[c][i]+=v);
+      rowTotal+=showDays.reduce((s,d)=>s+(dias[d]||0),0);
+      gtAll+=0; // counted below
+      return dias;
+    });
+    const rowT=canales.reduce((s,c)=>{
+      const dias=row.canales[c]||[];
+      return s+dias.reduce((a,v)=>a+v,0);
+    },0);
+
+    html+=`<tr>
+      <td class="tl stk stk1"><b style="color:var(--burdo)">${row.entidad}</b></td>
+      <td class="tl stk stk2" style="font-size:10px;color:var(--muted)">${row.tramo}</td>
+      <td style="text-align:right;font-family:var(--fm);font-size:10px;color:var(--muted);border-right:2px solid var(--bd);padding:5px 9px">${fmt(row.casos||0)}</td>
+      ${canales.map((c,ci)=>{
+        const dias=row.canales[c]||new Array(31).fill(0);
+        return showDays.map((d,di)=>{
+          const v=dias[d]||0;
+          return `<td style="${ci>0&&di===0?'border-left:2px solid var(--bd);':''}${v?'':'color:#d4c4c6'}">${fmtZ(v)}</td>`;
+        }).join('');
+      }).join('')}
+      <td class="stkR">${fmt(rowT)}</td>
+    </tr>`;
+  });
+
+  // grand total row
+  canales.forEach(c=>{gtAll+=showDays.reduce((s,d)=>s+(gtCanal[c][d]||0),0);});
+  html+=`<tr class="grand-total">
+    <td class="tl stk stk1">TOTAL</td>
+    <td class="stk stk2"></td>
+    <td style="border-right:2px solid var(--bd)"></td>
+    ${canales.map((c,ci)=>showDays.map((d,di)=>{
+      const v=gtCanal[c][d]||0;
+      return `<td style="font-weight:700;${ci>0&&di===0?'border-left:2px solid var(--bd)':''}">${fmtZ(v)}</td>`;
+    }).join('')).join('')}
+    <td class="stkR" style="color:var(--burdo-light)">${fmt(gtAll)}</td>
+  </tr>`;
+
+  html+='</tbody>';
+  document.getElementById('main-table').innerHTML=html;
+  document.getElementById('count-label').textContent=`${rows.length} combinaciones · ${showDays.length} días · ${canales.length} canales`;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const data=filtered();
+  renderKPIs(data);
+  if(viewMode==='todos') renderTableDias(data,false);
+  else if(viewMode==='activos') renderTableDias(data,true);
+  else renderPivotCanal(data);
+}
+
+// Mostrar loading
+document.getElementById('main-table').innerHTML = '<tr><td colspan="40" style="padding:40px;text-align:center;color:var(--muted);font-size:13px;font-family:var(--fm)">⏳ Cargando datos...</td></tr>';
+
+// Fecha del último commit
+fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/commits?path=${GH_FILE}&per_page=1`)
+  .then(r => r.ok ? r.json() : null)
+  .then(commits => {
+    if (commits && commits.length > 0) {
+      const d = new Date(commits[0].commit.committer.date);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      document.getElementById('topbar-update').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>CSV actualizado: ${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+    }
+  })
+  .catch(() => { document.getElementById('topbar-update').innerHTML = ''; });
+
+// Cargar CSV
+fetch(GH_FILE)
+  .then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' — no se pudo cargar ' + GH_FILE);
+    return r.text();
+  })
+  .then(text => {
+    RAW = parseCSV(text);
+    buildChips();
+    render();
+  })
+  .catch(err => {
+    document.getElementById('main-table').innerHTML = `
+      <tr><td colspan="40" style="padding:40px;text-align:center">
+        <div style="color:var(--burdo-light);font-size:14px;font-weight:600;margin-bottom:8px">⚠ Error al cargar el CSV</div>
+        <div style="color:var(--muted);font-size:12px">${err.message}</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:8px">Verificá que <b>${GH_FILE}</b> esté en el repositorio <b>${GH_REPO}</b>.</div>
+      </td></tr>`;
+  });
+</script>
+</body>
+</html>
