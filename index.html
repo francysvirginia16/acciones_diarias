@@ -119,10 +119,7 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
   <div class="topbar-title">Resumen Acciones Diarias</div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
     <div class="topbar-date" id="topbar-date">—</div>
-    <div class="topbar-date" id="topbar-update" style="opacity:.45;font-size:9px">
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Cargando...
-    </div>
+    <div id="topbar-update" style="color:rgba(255,255,255,.7);font-size:9px;font-family:var(--fm);letter-spacing:.03em"></div>
   </div>
 </div>
 
@@ -511,7 +508,7 @@ fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/commits?path=${GH_FILE
       const yyyy = d.getFullYear();
       const hh = String(d.getHours()).padStart(2,'0');
       const mi = String(d.getMinutes()).padStart(2,'0');
-      document.getElementById('topbar-update').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>CSV actualizado: ${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+      document.getElementById('topbar-update').innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Actualizado: ${dd}/${mm}/${yyyy} ${hh}:${mi}`;
     }
   })
   .catch(() => { document.getElementById('topbar-update').innerHTML = ''; });
