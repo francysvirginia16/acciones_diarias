@@ -185,16 +185,17 @@ function parseCSV(text) {
     }
     cols.push(cur);
     if (cols.length < 36) continue;
+    if(cols.length < 37) continue;
     const dias = [];
     for (let d = 5; d <= 35; d++) dias.push(parseInt(cols[d]) || 0);
     rows.push({
-      entidad:           cols[0].trim(),
-      ciclo:             cols[1].trim() === 'NULL' ? '' : cols[1].trim(),
-      tramo:             cols[2].trim(),
-      casos_activos:     parseInt(cols[3]) || 0,
-      tipo_accion:       cols[4].trim(),
-      dias:              dias,
-      total_mes:         parseInt(cols[36]) || 0
+      entidad:       cols[0].trim(),
+      ciclo:         (cols[1]||'').trim() === 'NULL' ? '' : (cols[1]||'').trim(),
+      tramo:         (cols[2]||'').trim(),
+      casos_activos: parseInt(cols[3]) || 0,
+      tipo_accion:   (cols[4]||'').trim(),
+      dias:          dias,
+      total_mes:     parseInt(cols[36]) || 0
     });
   }
   return rows;
@@ -245,7 +246,7 @@ function buildChips(){
   // Ciclo facturacion — solo mostrar si hay valores
   const ciclos=[...new Set(RAW.map(r=>r.ciclo).filter(v=>v!==''))].sort();
   if(ciclos.length>0){
-    document.getElementById('chips-ciclo').innerHTML=ciclos.map(v=>`<button class="chip" data-type="ciclo" data-val="${v}" onclick="toggleChip(this,'ciclo')">Ciclo ${v}</button>`).join('');
+    document.getElementById('chips-ciclo').innerHTML=ciclos.map(v=>`<button class="chip" data-type="ciclo" data-val="${v}" onclick="toggleChip(this,'ciclo')">${v}</button>`).join('');
     document.getElementById('row-ciclo').style.display='flex';
     document.getElementById('row-limpiar').style.display='none';
   }
