@@ -138,7 +138,7 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
     <div id="chips-entidad" class="chips-row"></div>
   </div>
   <div class="filter-row" id="row-ciclo" style="display:none">
-    <span class="filter-label">Ciclo</span>
+    <span class="filter-label">Segmento</span>
     <div id="chips-ciclo" class="chips-row"></div>
     <button class="btn-reset" onclick="resetFilters()" style="margin-left:8px">✕ Limpiar</button>
   </div>
@@ -172,30 +172,39 @@ const GH_FILE = 'acciones_mensuales.csv';
 
 function parseCSV(text) {
   const lines = text.trim().split('\n');
-  const headers = lines[0].split(',');
+  const headers = lines[0].split(',').map(h=>h.trim());
+  const idx = {};
+  headers.forEach((h,i)=>idx[h]=i);
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
-    // handle quoted fields (e.g. "1) 0 a 30")
     const cols = [];
     let cur = '', inQ = false;
     for (const ch of lines[i]) {
       if (ch === '"') { inQ = !inQ; }
-      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
       else { cur += ch; }
     }
-    cols.push(cur);
-    if (cols.length < 36) continue;
-    if(cols.length < 37) continue;
+    cols.push(cur.trim());
+    // necesitamos al menos las columnas básicas
+    if (cols.length < 10) continue;
+    // columna segmento (puede llamarse segmento o ciclo_facturacion)
+    const cicloCol = idx['segmento'] !== undefined ? idx['segmento'] : idx['ciclo_facturacion'];
+    const cicloVal = cicloCol !== undefined ? (cols[cicloCol]||'') : '';
     const dias = [];
-    for (let d = 5; d <= 35; d++) dias.push(parseInt(cols[d]) || 0);
+    for (let d = 1; d <= 31; d++) {
+      const ci = idx['dia'+d];
+      dias.push(ci !== undefined ? (parseInt(cols[ci])||0) : 0);
+    }
+    const totalIdx = idx['total_mes'];
+    const total = totalIdx !== undefined ? (parseInt(cols[totalIdx])||0) : 0;
     rows.push({
-      entidad:       cols[0].trim(),
-      ciclo:         (cols[1]||'').trim() === 'NULL' ? '' : (cols[1]||'').trim(),
-      tramo:         (cols[2]||'').trim(),
-      casos_activos: parseInt(cols[3]) || 0,
-      tipo_accion:   (cols[4]||'').trim(),
+      entidad:       (cols[idx['entidad']]||'').trim(),
+      ciclo:         cicloVal === 'NULL' ? '' : cicloVal,
+      tramo:         (cols[idx['tramo_gestion']]||'').trim(),
+      casos_activos: parseInt(cols[idx['casos_activos']])||0,
+      tipo_accion:   (cols[idx['tipo_accion']]||'').trim(),
       dias:          dias,
-      total_mes:     parseInt(cols[36]) || 0
+      total_mes:     total
     });
   }
   return rows;
