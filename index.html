@@ -366,12 +366,12 @@ function renderTableDias(data, onlyActive){
     subTotals[key].total+=r.total_mes;
   });
 
-  let lastEnt='', lastTramo='';
+  let lastEnt='', lastTramo='', lastCiclo='';
   sorted.forEach(r=>{
-    const key=r.entidad+'|'+r.tramo;
+    const key=r.entidad+'|'+r.tramo+'|'+r.ciclo;
     // subtotal row before new group
-    if((r.entidad!==lastEnt||r.tramo!==lastTramo)&&lastTramo!==''){
-      const st=subTotals[lastEnt+'|'+lastTramo];
+    if((r.entidad!==lastEnt||r.tramo!==lastTramo||r.ciclo!==lastCiclo)&&lastTramo!==''){
+      const st=subTotals[lastEnt+'|'+lastTramo+'|'+lastCiclo];
       html+=`<tr class="sub-total">
         <td class="tl stk stk1"></td>
         <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">SUBTOTAL</td>
@@ -381,7 +381,7 @@ function renderTableDias(data, onlyActive){
         <td class="stkR">${fmt(st.total)}</td>
       </tr>`;
     }
-    lastEnt=r.entidad; lastTramo=r.tramo;
+    lastEnt=r.entidad; lastTramo=r.tramo; lastCiclo=r.ciclo;
     const color=CANAL_COLORS[r.tipo_accion]||'#aaa';
     html+=`<tr>
       <td class="tl stk stk1"><b style="color:var(--burdo)">${r.entidad}</b></td>
@@ -395,7 +395,7 @@ function renderTableDias(data, onlyActive){
 
   // last subtotal
   if(lastTramo){
-    const st=subTotals[lastEnt+'|'+lastTramo];
+    const st=subTotals[lastEnt+'|'+lastTramo+'|'+lastCiclo];
     html+=`<tr class="sub-total">
       <td class="tl stk stk1"></td>
       <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">SUBTOTAL</td>
