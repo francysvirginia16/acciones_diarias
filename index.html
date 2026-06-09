@@ -123,7 +123,7 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
   </div>
 </div>
 
-<!-- FILTROS — 3 filas -->
+<!-- FILTROS — 4 filas -->
 <div class="filter-bar">
   <div class="filter-row">
     <span class="filter-label">Canal</span>
@@ -136,7 +136,14 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
   <div class="filter-row">
     <span class="filter-label">Entidad</span>
     <div id="chips-entidad" class="chips-row"></div>
+  </div>
+  <div class="filter-row" id="row-ciclo" style="display:none">
+    <span class="filter-label">Ciclo</span>
+    <div id="chips-ciclo" class="chips-row"></div>
     <button class="btn-reset" onclick="resetFilters()" style="margin-left:8px">✕ Limpiar</button>
+  </div>
+  <div class="filter-row" id="row-limpiar" style="display:flex">
+    <button class="btn-reset" onclick="resetFilters()">✕ Limpiar</button>
   </div>
 </div>
 
@@ -149,7 +156,7 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
     <span class="view-label">Vista:</span>
     <button class="vtab on" id="vt-todos" onclick="setView('todos')">Todos los días</button>
     <button class="vtab" id="vt-activos" onclick="setView('activos')">Solo días activos</button>
-    <button class="vtab" id="vt-canal" onclick="setView('canal')">Pivot por canal</button>
+    <button class="vtab" id="vt-canal" onclick="setView('canal')">Por Entidad y Canal</button>
     <span style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--fm)" id="count-label"></span>
   </div>
   <div class="tbl-wrap">
@@ -179,14 +186,15 @@ function parseCSV(text) {
     cols.push(cur);
     if (cols.length < 36) continue;
     const dias = [];
-    for (let d = 4; d <= 34; d++) dias.push(parseInt(cols[d]) || 0);
+    for (let d = 5; d <= 35; d++) dias.push(parseInt(cols[d]) || 0);
     rows.push({
-      entidad:      cols[0].trim(),
-      tramo:        cols[1].trim(),
-      casos_activos: parseInt(cols[2]) || 0,
-      tipo_accion:  cols[3].trim(),
-      dias:         dias,
-      total_mes:    parseInt(cols[35]) || 0
+      entidad:           cols[0].trim(),
+      ciclo:             cols[1].trim() === 'NULL' ? '' : cols[1].trim(),
+      tramo:             cols[2].trim(),
+      casos_activos:     parseInt(cols[3]) || 0,
+      tipo_accion:       cols[4].trim(),
+      dias:              dias,
+      total_mes:         parseInt(cols[36]) || 0
     });
   }
   return rows;
@@ -197,7 +205,7 @@ const CANAL_COLORS={ivr:'#0ea5e9',mail:'#d97706',call_pred:'#7c3aed',call_ope:'#
 const TRAMO_ORDER=['1) 0 a 30','2) 31 a 60','3) 61 a 90','4) 91 a 120','5) 121 a 180','6) 181 a 360','7) >360'];
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let fCanal=new Set(), fTramo=new Set(), fEntidad=new Set(), viewMode='todos';
+let fCanal=new Set(), fTramo=new Set(), fEntidad=new Set(), fCiclo=new Set(), viewMode='todos';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmt=n=>n?n.toLocaleString('es-AR'):'—';
@@ -207,7 +215,8 @@ function filtered(){
   return RAW.filter(r=>
     (fCanal.size===0||fCanal.has(r.tipo_accion))&&
     (fTramo.size===0||fTramo.has(r.tramo))&&
-    (fEntidad.size===0||fEntidad.has(r.entidad))
+    (fEntidad.size===0||fEntidad.has(r.entidad))&&
+    (fCiclo.size===0||fCiclo.has(r.ciclo)||r.ciclo==='')
   );
 }
 
@@ -233,6 +242,13 @@ function buildChips(){
   document.getElementById('chips-canal').innerHTML=canales.map(c=>`<button class="chip" data-type="canal" data-val="${c}" onclick="toggleChip(this,'canal')" style="border-left:3px solid ${CANAL_COLORS[c]||'#aaa'}">${c}</button>`).join('');
   document.getElementById('chips-tramo').innerHTML=tramos.map(t=>`<button class="chip" data-type="tramo" data-val="${t}" onclick="toggleChip(this,'tramo')">${t}</button>`).join('');
   document.getElementById('chips-entidad').innerHTML=entidades.map(e=>`<button class="chip" data-type="entidad" data-val="${e}" onclick="toggleChip(this,'entidad')">${e}</button>`).join('');
+  // Ciclo facturacion — solo mostrar si hay valores
+  const ciclos=[...new Set(RAW.map(r=>r.ciclo).filter(v=>v!==''))].sort();
+  if(ciclos.length>0){
+    document.getElementById('chips-ciclo').innerHTML=ciclos.map(v=>`<button class="chip" data-type="ciclo" data-val="${v}" onclick="toggleChip(this,'ciclo')">Ciclo ${v}</button>`).join('');
+    document.getElementById('row-ciclo').style.display='flex';
+    document.getElementById('row-limpiar').style.display='none';
+  }
 
   // fecha
   // La fecha se setea desde el commit de GitHub o al buildChips
@@ -248,7 +264,7 @@ function buildChips(){
 
 function toggleChip(btn,type){
   const val=btn.dataset.val;
-  const map={canal:fCanal,tramo:fTramo,entidad:fEntidad};
+  const map={canal:fCanal,tramo:fTramo,entidad:fEntidad,ciclo:fCiclo};
   const s=map[type];
   if(s.has(val)){s.delete(val);btn.classList.remove('on');}
   else{s.add(val);btn.classList.add('on');}
@@ -256,7 +272,7 @@ function toggleChip(btn,type){
 }
 
 function resetFilters(){
-  fCanal.clear();fTramo.clear();fEntidad.clear();
+  fCanal.clear();fTramo.clear();fEntidad.clear();fCiclo.clear();
   document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
   render();
 }
@@ -299,7 +315,7 @@ function renderTableDias(data, onlyActive){
   // mapa casos activos por entidad+tramo (tomar el max, evitar 0s de registros sin campo)
   const casosMap={};
   data.forEach(r=>{
-    const k=r.entidad+'|'+r.tramo;
+    const k=r.entidad+'|'+r.tramo+'|'+r.ciclo;
     if(!casosMap[k]||( r.casos_activos||0)>casosMap[k]) casosMap[k]=r.casos_activos||0;
   });
 
@@ -334,8 +350,8 @@ function renderTableDias(data, onlyActive){
   const subTotals={};// entidad+tramo → {dias:[],total}
 
   sorted.forEach(r=>{
-    const key=r.entidad+'|'+r.tramo;
-    if(!subTotals[key]) subTotals[key]={dias:new Array(31).fill(0),total:0,entidad:r.entidad,tramo:r.tramo};
+    const key=r.entidad+'|'+r.tramo+'|'+r.ciclo;
+    if(!subTotals[key]) subTotals[key]={dias:new Array(31).fill(0),total:0,entidad:r.entidad,tramo:r.tramo,ciclo:r.ciclo};
     r.dias.forEach((v,i)=>subTotals[key].dias[i]+=v);
     subTotals[key].total+=r.total_mes;
   });
@@ -361,7 +377,7 @@ function renderTableDias(data, onlyActive){
       <td class="tl stk stk1"><b style="color:var(--burdo)">${r.entidad}</b></td>
       <td class="tl stk stk2" style="font-size:10px;color:var(--muted)">${r.tramo}</td>
       <td class="tl stk stk3"><span class="canal-lbl"><span class="canal-dot" style="background:${color}"></span>${r.tipo_accion}</span></td>
-      <td class="stk stk4" style="color:var(--muted);font-size:10px">${casosMap[r.entidad+'|'+r.tramo]?fmt(casosMap[r.entidad+'|'+r.tramo]):''}</td>
+      <td class="stk stk4" style="color:var(--muted);font-size:10px">${casosMap[r.entidad+'|'+r.tramo+'|'+r.ciclo]?fmt(casosMap[r.entidad+'|'+r.tramo+'|'+r.ciclo]):''}</td>
       ${showDays.map(d=>{const v=r.dias[d]||0;return `<td class="${heatClass(v,gMax)}">${fmtZ(v)}</td>`;}).join('')}
       <td class="stkR">${fmt(r.total_mes)}</td>
     </tr>`;
@@ -398,91 +414,93 @@ function renderTableDias(data, onlyActive){
   document.getElementById('count-label').textContent=`${sorted.length} registros · ${showDays.length} días`;
 }
 
-// ─── VISTA: PIVOT CANAL (filas=entidad+tramo, cols=canales, sub-total por día) ──
+// ─── VISTA: ENTIDAD + CANAL (sin tramo) ──────────────────────────────────────
 function renderPivotCanal(data){
-  const canales=[...new Set(data.map(r=>r.tipo_accion))].sort();
   const showDays=activeDays(data);
-
-  // build map: entidad+tramo → canal → dias[]
-  const map={};
-  data.forEach(r=>{
-    const k=r.entidad+'||'+r.tramo;
-    if(!map[k]) map[k]={entidad:r.entidad,tramo:r.tramo,canales:{},casos:r.casos_activos||0};
-    if((r.casos_activos||0)>map[k].casos) map[k].casos=r.casos_activos||0;
-    map[k].canales[r.tipo_accion]=r.dias;
-  });
-  const rows=Object.values(map).sort((a,b)=>{
-    if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
-    return TRAMO_ORDER.indexOf(a.tramo)-TRAMO_ORDER.indexOf(b.tramo);
-  });
-
   let gMax=0;
   data.forEach(r=>r.dias.forEach(v=>{if(v>gMax)gMax=v;}));
 
-  // header: stickies + one col per (canal×day) grouped
+  // Agrupar por entidad + canal (sumar sobre todos los tramos)
+  const map={};
+  data.forEach(r=>{
+    const k=r.entidad+'||'+r.tipo_accion;
+    if(!map[k]) map[k]={entidad:r.entidad,tipo_accion:r.tipo_accion,dias:new Array(31).fill(0),total:0};
+    r.dias.forEach((v,i)=>map[k].dias[i]+=v);
+    map[k].total+=r.total_mes;
+  });
+
+  const rows=Object.values(map).sort((a,b)=>{
+    if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
+    return a.tipo_accion.localeCompare(b.tipo_accion);
+  });
+
+  // Subtotales por entidad
+  const entSubtotals={};
+  rows.forEach(r=>{
+    if(!entSubtotals[r.entidad]) entSubtotals[r.entidad]={dias:new Array(31).fill(0),total:0};
+    r.dias.forEach((v,i)=>entSubtotals[r.entidad].dias[i]+=v);
+    entSubtotals[r.entidad].total+=r.total;
+  });
+
   let html=`<thead>
     <tr class="hdr1">
       <th class="tl stk stk1" rowspan="2">Entidad</th>
-      <th class="tl stk stk2" rowspan="2">Tramo</th>
-      <th rowspan="2" style="text-align:right;min-width:80px;padding:5px 9px;font-size:9px;font-weight:600;color:var(--burdo);text-transform:uppercase;letter-spacing:.04em;border-right:2px solid var(--bd)">Casos<br>Activos</th>
-      ${canales.map((c,i)=>`<th colspan="${showDays.length}" class="${i>0?'grp-border':''}" style="background:${CANAL_COLORS[c]||'var(--burdo)'}20;color:${CANAL_COLORS[c]||'var(--burdo)'};border-top:3px solid ${CANAL_COLORS[c]||'var(--burdo)'}">${c}</th>`).join('')}
-      <th rowspan="2" class="stkR" style="text-align:right;min-width:90px">TOTAL</th>
+      <th class="tl stk stk2" rowspan="2">Canal</th>
+      <th class="stkR" rowspan="2" style="text-align:right;min-width:90px">TOTAL MES</th>
+      <th colspan="${showDays.length}" style="text-align:center">Días del mes</th>
     </tr>
     <tr class="hdr2">
-      ${canales.map((c,ci)=>showDays.map((d,di)=>`<th style="min-width:42px;${ci>0&&di===0?'border-left:2px solid var(--bd)':''}">D${d+1}</th>`).join('')).join('')}
+      ${showDays.map(d=>`<th style="min-width:50px;max-width:50px">D${d+1}</th>`).join('')}
     </tr>
   </thead><tbody>`;
 
-  // grand totals per canal per day
-  const gtCanal={};
-  canales.forEach(c=>{gtCanal[c]=new Array(31).fill(0);});
-  let gtAll=0;
-
-  rows.forEach(row=>{
-    let rowTotal=0;
-    const daysByCanal=canales.map(c=>{
-      const dias=row.canales[c]||new Array(31).fill(0);
-      dias.forEach((v,i)=>gtCanal[c][i]+=v);
-      rowTotal+=showDays.reduce((s,d)=>s+(dias[d]||0),0);
-      gtAll+=0; // counted below
-      return dias;
-    });
-    const rowT=canales.reduce((s,c)=>{
-      const dias=row.canales[c]||[];
-      return s+dias.reduce((a,v)=>a+v,0);
-    },0);
-
+  let lastEnt='';
+  rows.forEach(r=>{
+    // subtotal antes de nueva entidad
+    if(r.entidad!==lastEnt&&lastEnt!==''){
+      const st=entSubtotals[lastEnt];
+      html+=`<tr class="sub-total">
+        <td class="tl stk stk1"></td>
+        <td class="tl stk stk2" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+        <td class="stkR">${fmt(st.total)}</td>
+        ${showDays.map(d=>`<td>${fmtZ(st.dias[d])}</td>`).join('')}
+      </tr>`;
+    }
+    lastEnt=r.entidad;
+    const color=CANAL_COLORS[r.tipo_accion]||'#aaa';
     html+=`<tr>
-      <td class="tl stk stk1"><b style="color:var(--burdo)">${row.entidad}</b></td>
-      <td class="tl stk stk2" style="font-size:10px;color:var(--muted)">${row.tramo}</td>
-      <td style="text-align:right;font-family:var(--fm);font-size:10px;color:var(--muted);border-right:2px solid var(--bd);padding:5px 9px">${fmt(row.casos||0)}</td>
-      ${canales.map((c,ci)=>{
-        const dias=row.canales[c]||new Array(31).fill(0);
-        return showDays.map((d,di)=>{
-          const v=dias[d]||0;
-          return `<td style="${ci>0&&di===0?'border-left:2px solid var(--bd);':''}${v?'':'color:#d4c4c6'}">${fmtZ(v)}</td>`;
-        }).join('');
-      }).join('')}
-      <td class="stkR">${fmt(rowT)}</td>
+      <td class="tl stk stk1"><b style="color:var(--burdo)">${r.entidad}</b></td>
+      <td class="tl stk stk2"><span class="canal-lbl"><span class="canal-dot" style="background:${color}"></span>${r.tipo_accion}</span></td>
+      <td class="stkR">${fmt(r.total)}</td>
+      ${showDays.map(d=>`<td>${fmtZ(r.dias[d]||0)}</td>`).join('')}
     </tr>`;
   });
 
-  // grand total row
-  canales.forEach(c=>{gtAll+=showDays.reduce((s,d)=>s+(gtCanal[c][d]||0),0);});
+  // último subtotal
+  if(lastEnt){
+    const st=entSubtotals[lastEnt];
+    html+=`<tr class="sub-total">
+      <td class="tl stk stk1"></td>
+      <td class="tl stk stk2" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+      <td class="stkR">${fmt(st.total)}</td>
+      ${showDays.map(d=>`<td>${fmtZ(st.dias[d])}</td>`).join('')}
+    </tr>`;
+  }
+
+  // grand total
+  const gtDias=new Array(31).fill(0);
+  let gtAll=0;
+  data.forEach(r=>{r.dias.forEach((v,i)=>gtDias[i]+=v);gtAll+=r.total_mes;});
   html+=`<tr class="grand-total">
     <td class="tl stk stk1">TOTAL</td>
-    <td class="stk stk2"></td>
-    <td style="border-right:2px solid var(--bd)"></td>
-    ${canales.map((c,ci)=>showDays.map((d,di)=>{
-      const v=gtCanal[c][d]||0;
-      return `<td style="font-weight:700;${ci>0&&di===0?'border-left:2px solid var(--bd)':''}">${fmtZ(v)}</td>`;
-    }).join('')).join('')}
+    <td class="stk stk2" style="font-style:italic">— global —</td>
     <td class="stkR" style="color:var(--burdo-light)">${fmt(gtAll)}</td>
+    ${showDays.map(d=>`<td style="font-weight:700">${fmtZ(gtDias[d])}</td>`).join('')}
   </tr>`;
 
   html+='</tbody>';
   document.getElementById('main-table').innerHTML=html;
-  document.getElementById('count-label').textContent=`${rows.length} combinaciones · ${showDays.length} días · ${canales.length} canales`;
+  document.getElementById('count-label').textContent=`${rows.length} combinaciones · ${showDays.length} días`;
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
