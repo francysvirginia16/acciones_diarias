@@ -240,6 +240,25 @@ function activeDays(data){
   return cols;
 }
 
+// Colapsar filas por entidad+tramo+canal (suma segmentos de MEL0 cuando no hay filtro)
+function collapseData(data){
+  const map={};
+  data.forEach(r=>{
+    const k=r.entidad+'|'+r.tramo+'|'+r.tipo_accion;
+    if(!map[k]){
+      map[k]={
+        entidad:r.entidad, tramo:r.tramo, tipo_accion:r.tipo_accion, ciclo:r.ciclo,
+        casos_activos:r.casos_activos||0,
+        dias:new Array(31).fill(0), total_mes:0
+      };
+    }
+    r.dias.forEach((v,i)=>map[k].dias[i]+=v);
+    map[k].total_mes+=r.total_mes;
+    if((r.casos_activos||0)>map[k].casos_activos) map[k].casos_activos=r.casos_activos||0;
+  });
+  return Object.values(map);
+}
+
 function heatClass(v,max){
   if(!v) return 'zero';
   return '';
@@ -336,11 +355,11 @@ function renderTableDias(data, onlyActive){
   data.forEach(r=>r.dias.forEach(v=>{if(v>gMax)gMax=v;}));
 
   // sort data
-  const sorted=[...data].sort((a,b)=>{
+  const collapsed=collapseData(data);
+  const sorted=[...collapsed].sort((a,b)=>{
     if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
     const ti=TRAMO_ORDER.indexOf(a.tramo), tj=TRAMO_ORDER.indexOf(b.tramo);
     if(ti!==tj) return ti-tj;
-    if(a.ciclo!==b.ciclo) return a.ciclo.localeCompare(b.ciclo);
     return a.tipo_accion.localeCompare(b.tipo_accion);
   });
 
@@ -433,8 +452,9 @@ function renderPivotCanal(data){
   data.forEach(r=>r.dias.forEach(v=>{if(v>gMax)gMax=v;}));
 
   // Agrupar por entidad + canal (sumar sobre todos los tramos)
+  const dataC=collapseData(data);
   const map={};
-  data.forEach(r=>{
+  dataC.forEach(r=>{
     const k=r.entidad+'||'+r.tipo_accion;
     if(!map[k]) map[k]={entidad:r.entidad,tipo_accion:r.tipo_accion,dias:new Array(31).fill(0),total:0};
     r.dias.forEach((v,i)=>map[k].dias[i]+=v);
