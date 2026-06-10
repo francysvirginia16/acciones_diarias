@@ -242,19 +242,32 @@ function activeDays(data){
 
 // Colapsar filas por entidad+tramo+canal (suma segmentos de MEL0 cuando no hay filtro)
 function collapseData(data){
+  // Paso 1: calcular casos_activos por entidad+tramo sumando segmentos únicos
+  const casosSet={};  // entidad|tramo → Set de ciclos ya contados
+  const casosSum={};  // entidad|tramo → suma de casos por ciclo único
+  data.forEach(r=>{
+    const kt=r.entidad+'|'+r.tramo;
+    const kc=r.entidad+'|'+r.tramo+'|'+r.ciclo;
+    if(!casosSet[kt]){ casosSet[kt]=new Set(); casosSum[kt]=0; }
+    if(!casosSet[kt].has(kc)){
+      casosSet[kt].add(kc);
+      casosSum[kt]+=(r.casos_activos||0);
+    }
+  });
+  // Paso 2: colapsar días y totales por entidad+tramo+canal
   const map={};
   data.forEach(r=>{
     const k=r.entidad+'|'+r.tramo+'|'+r.tipo_accion;
+    const kt=r.entidad+'|'+r.tramo;
     if(!map[k]){
       map[k]={
         entidad:r.entidad, tramo:r.tramo, tipo_accion:r.tipo_accion, ciclo:r.ciclo,
-        casos_activos:r.casos_activos||0,
+        casos_activos: casosSum[kt]||0,
         dias:new Array(31).fill(0), total_mes:0
       };
     }
     r.dias.forEach((v,i)=>map[k].dias[i]+=v);
     map[k].total_mes+=r.total_mes;
-    if((r.casos_activos||0)>map[k].casos_activos) map[k].casos_activos=r.casos_activos||0;
   });
   return Object.values(map);
 }
