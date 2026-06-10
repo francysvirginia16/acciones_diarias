@@ -240,21 +240,24 @@ function activeDays(data){
   return cols;
 }
 
-// Colapsar filas por entidad+tramo+canal (suma segmentos de MEL0 cuando no hay filtro)
+// Colapsar filas por entidad+tramo+canal sumando todos los segmentos
 function collapseData(data){
-  // Paso 1: sumar casos únicos por entidad|tramo (un valor por ciclo)
-  const casosSum={};
-  const ciclosVistos={};
+  // Paso 1: para cada entidad+tramo, obtener el max de casos por segmento único
+  // y sumarlos (cada segmento es una cartera distinta)
+  const casosPorCiclo={};  // entidad|tramo|ciclo → max casos_activos
   data.forEach(function(r){
-    var kt=r.entidad+'|'+r.tramo;
-    var kc=r.entidad+'|'+r.tramo+'|'+r.ciclo+'|'+r.tipo_accion;
-    // usar el primer canal como representante del ciclo para no duplicar
-    var kRepresentante=r.entidad+'|'+r.tramo+'|'+r.ciclo;
-    if(!ciclosVistos[kRepresentante]){
-      ciclosVistos[kRepresentante]=true;
-      casosSum[kt]=(casosSum[kt]||0)+(r.casos_activos||0);
-    }
+    var kc=r.entidad+'|'+r.tramo+'|'+r.ciclo;
+    var v=r.casos_activos||0;
+    if(!casosPorCiclo[kc] || v>casosPorCiclo[kc]) casosPorCiclo[kc]=v;
   });
+  // Sumar los distintos ciclos por entidad+tramo
+  const casosSum={};
+  Object.keys(casosPorCiclo).forEach(function(kc){
+    var parts=kc.split('|');
+    var kt=parts[0]+'|'+parts[1];
+    casosSum[kt]=(casosSum[kt]||0)+casosPorCiclo[kc];
+  });
+
   // Paso 2: colapsar días y totales por entidad+tramo+canal
   const map={};
   data.forEach(function(r){
