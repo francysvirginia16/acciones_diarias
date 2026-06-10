@@ -197,6 +197,8 @@ function parseCSV(text) {
     }
     const totalIdx = idx['total_mes'];
     const total = totalIdx !== undefined ? (parseInt(cols[totalIdx])||0) : 0;
+    // saltar filas sin actividad
+    if(total === 0 && dias.every(v=>v===0)) continue;
     rows.push({
       entidad:       (cols[idx['entidad']]||'').trim(),
       ciclo:         cicloVal === 'NULL' ? '' : cicloVal,
@@ -303,9 +305,9 @@ function renderKPIs(data){
   const todosCanales=[...new Set([...canalesOrden,...Object.keys(byCanal)])].filter(c=>byCanal[c]>0);
 
   // casos activos: tomar el max por entidad+tramo (evitar duplicados por canal)
-  const casosMap={};
-  data.forEach(r=>{const k=r.entidad+'|'+r.tramo;if(!casosMap[k])casosMap[k]=r.casos_activos||0;});
-  const totalCasos=Object.values(casosMap).reduce((s,v)=>s+v,0);
+  const casosMapKpi={};
+  data.forEach(r=>{const k=r.entidad+'|'+r.tramo;if(!casosMapKpi[k]||(r.casos_activos||0)>casosMapKpi[k])casosMapKpi[k]=r.casos_activos||0;});
+  const totalCasos=Object.values(casosMapKpi).reduce((s,v)=>s+v,0);
   let kpiHtml=`<div class="kpi b"><div class="kpi-l">Total Mes</div><div class="kpi-v">${fmt(total)}</div><div class="kpi-s">todas las acciones</div></div>`;
   kpiHtml+=`<div class="kpi" style="--kc:var(--burdo)"><div class="kpi-l">Casos Activos</div><div class="kpi-v">${fmt(totalCasos)}</div><div class="kpi-s">suma por entidad/tramo</div></div>`;
   todosCanales.forEach(c=>{
@@ -326,7 +328,7 @@ function renderTableDias(data, onlyActive){
   const casosMap={};
   data.forEach(r=>{
     const k=r.entidad+'|'+r.tramo+'|'+r.ciclo;
-    if(!casosMap[k]||( r.casos_activos||0)>casosMap[k]) casosMap[k]=r.casos_activos||0;
+    if(!casosMap[k]||(r.casos_activos||0)>casosMap[k]) casosMap[k]=r.casos_activos||0;
   });
 
   // compute global max for heat
