@@ -556,11 +556,12 @@ function renderPivotCanal(data){
 function renderPivotAdju(data){
   const showDays=activeDays(data);
 
-  // Agrupar por entidad + adju + canal
+  // Agrupar por entidad + adju + canal (directo, sin collapseData)
   const map={};
   data.forEach(function(r){
-    var k=r.entidad+'||'+r.adju+'||'+r.tipo_accion;
-    if(!map[k]) map[k]={entidad:r.entidad,adju:r.adju||'—',tipo_accion:r.tipo_accion,
+    var adjuKey = r.adju && r.adju!=='' ? r.adju : '—';
+    var k=r.entidad+'||'+adjuKey+'||'+r.tipo_accion;
+    if(!map[k]) map[k]={entidad:r.entidad,adju:adjuKey,tipo_accion:r.tipo_accion,
       dias:new Array(31).fill(0),total:0};
     r.dias.forEach(function(v,i){ map[k].dias[i]+=v; });
     map[k].total+=r.total_mes;
@@ -576,7 +577,7 @@ function renderPivotAdju(data){
   const adjuSub={};
   rows.forEach(function(r){
     var k=r.entidad+'||'+r.adju;
-    if(!adjuSub[k]) adjuSub[k]={entidad:r.entidad,adju:r.adju,dias:new Array(31).fill(0),total:0};
+    if(!adjuSub[k]) adjuSub[k]={entidad:r.entidad,adju:r.adju||'—',dias:new Array(31).fill(0),total:0};
     r.dias.forEach(function(v,i){ adjuSub[k].dias[i]+=v; });
     adjuSub[k].total+=r.total;
   });
