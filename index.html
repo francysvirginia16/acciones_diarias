@@ -157,6 +157,7 @@ table.res thead th.stkR{background:var(--burdo) !important;color:#fff !important
     <button class="vtab on" id="vt-todos" onclick="setView('todos')">Todos los días</button>
     <button class="vtab" id="vt-activos" onclick="setView('activos')">Solo días activos</button>
     <button class="vtab" id="vt-canal" onclick="setView('canal')">Por Entidad y Canal</button>
+    <button class="vtab" id="vt-adju" onclick="setView('adju')">Por Adjudicación</button>
     <span style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--fm)" id="count-label"></span>
   </div>
   <div class="tbl-wrap">
@@ -199,9 +200,12 @@ function parseCSV(text) {
     const total = totalIdx !== undefined ? (parseInt(cols[totalIdx])||0) : 0;
     // saltar filas sin actividad
     if(total === 0 && dias.every(v=>v===0)) continue;
+    const adjuCol = idx['codigo_adjudicacion'];
+    const adjuVal = adjuCol !== undefined ? (cols[adjuCol]||'').trim() : '';
     rows.push({
       entidad:       (cols[idx['entidad']]||'').trim(),
       ciclo:         cicloVal === 'NULL' ? '' : cicloVal,
+      adju:          adjuVal === 'NULL' ? '' : adjuVal,
       tramo:         (cols[idx['tramo_gestion']]||'').trim(),
       casos_activos: parseInt(cols[idx['casos_activos']])||0,
       tipo_accion:   (cols[idx['tipo_accion']]||'').trim(),
@@ -265,7 +269,7 @@ function collapseData(data){
     var kt=r.entidad+'|'+r.tramo;
     if(!map[k]){
       map[k]={
-        entidad:r.entidad, tramo:r.tramo, tipo_accion:r.tipo_accion, ciclo:r.ciclo,
+        entidad:r.entidad, tramo:r.tramo, tipo_accion:r.tipo_accion, ciclo:r.ciclo, adju:r.adju||'',
         casos_activos: casosSum[kt]||0,
         dias:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         total_mes:0
@@ -547,13 +551,109 @@ function renderPivotCanal(data){
   document.getElementById('count-label').textContent=`${rows.length} combinaciones · ${showDays.length} días`;
 }
 
+
+// ─── VISTA: ENTIDAD + ADJUDICACIÓN + CANAL ───────────────────────────────────
+function renderPivotAdju(data){
+  const showDays=activeDays(data);
+
+  // Agrupar por entidad + adju + canal
+  const map={};
+  data.forEach(function(r){
+    var k=r.entidad+'||'+r.adju+'||'+r.tipo_accion;
+    if(!map[k]) map[k]={entidad:r.entidad,adju:r.adju||'—',tipo_accion:r.tipo_accion,
+      dias:new Array(31).fill(0),total:0};
+    r.dias.forEach(function(v,i){ map[k].dias[i]+=v; });
+    map[k].total+=r.total_mes;
+  });
+
+  const rows=Object.values(map).sort(function(a,b){
+    if(a.entidad!==b.entidad) return a.entidad.localeCompare(b.entidad);
+    if(a.adju!==b.adju) return a.adju.localeCompare(b.adju);
+    return a.tipo_accion.localeCompare(b.tipo_accion);
+  });
+
+  // Subtotales por entidad+adju
+  const adjuSub={};
+  rows.forEach(function(r){
+    var k=r.entidad+'||'+r.adju;
+    if(!adjuSub[k]) adjuSub[k]={entidad:r.entidad,adju:r.adju,dias:new Array(31).fill(0),total:0};
+    r.dias.forEach(function(v,i){ adjuSub[k].dias[i]+=v; });
+    adjuSub[k].total+=r.total;
+  });
+
+  var html=`<thead>
+    <tr class="hdr1">
+      <th class="tl stk stk1" rowspan="2">Entidad</th>
+      <th class="tl stk stk2" rowspan="2">Adjudicación</th>
+      <th class="tl stk stk3" rowspan="2">Canal</th>
+      <th class="stkR" rowspan="2" style="text-align:right;vertical-align:middle">TOTAL MES</th>
+      <th colspan="${showDays.length}" style="text-align:center">Días del mes</th>
+    </tr>
+    <tr class="hdr2">
+      ${showDays.map(d=>`<th style="min-width:50px;max-width:50px">D${d+1}</th>`).join('')}
+    </tr>
+  </thead><tbody>`;
+
+  var lastEnt='', lastAdju='';
+  rows.forEach(function(r){
+    if((r.entidad!==lastEnt||r.adju!==lastAdju)&&lastAdju!==''){
+      var st=adjuSub[lastEnt+'||'+lastAdju];
+      html+=`<tr class="sub-total">
+        <td class="tl stk stk1"></td>
+        <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">${lastAdju}</td>
+        <td class="tl stk stk3" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+        <td class="stkR">${fmt(st.total)}</td>
+        ${showDays.map(d=>`<td>${fmtZ(st.dias[d])}</td>`).join('')}
+      </tr>`;
+    }
+    lastEnt=r.entidad; lastAdju=r.adju;
+    var color=CANAL_COLORS[r.tipo_accion]||'#aaa';
+    html+=`<tr>
+      <td class="tl stk stk1"><b style="color:var(--burdo)">${r.entidad}</b></td>
+      <td class="tl stk stk2" style="font-family:var(--fm);font-size:10px">${r.adju}</td>
+      <td class="tl stk stk3"><span class="canal-lbl"><span class="canal-dot" style="background:${color}"></span>${r.tipo_accion}</span></td>
+      <td class="stkR">${fmt(r.total)}</td>
+      ${showDays.map(d=>`<td>${fmtZ(r.dias[d]||0)}</td>`).join('')}
+    </tr>`;
+  });
+
+  // último subtotal
+  if(lastAdju){
+    var st=adjuSub[lastEnt+'||'+lastAdju];
+    html+=`<tr class="sub-total">
+      <td class="tl stk stk1"></td>
+      <td class="tl stk stk2" style="font-size:9px;color:var(--burdo)">${lastAdju}</td>
+      <td class="tl stk stk3" style="font-style:italic;font-size:10px;color:var(--burdo)">— todos los canales —</td>
+      <td class="stkR">${fmt(st.total)}</td>
+      ${showDays.map(d=>`<td>${fmtZ(st.dias[d])}</td>`).join('')}
+    </tr>`;
+  }
+
+  // grand total
+  var gtDias=new Array(31).fill(0);
+  var gtAll=0;
+  data.forEach(function(r){ r.dias.forEach(function(v,i){ gtDias[i]+=v; }); gtAll+=r.total_mes; });
+  html+=`<tr class="grand-total">
+    <td class="tl stk stk1">TOTAL</td>
+    <td class="stk stk2"></td>
+    <td class="tl stk stk3" style="font-style:italic">— global —</td>
+    <td class="stkR" style="color:var(--burdo-light)">${fmt(gtAll)}</td>
+    ${showDays.map(d=>`<td style="font-weight:700">${fmtZ(gtDias[d])}</td>`).join('')}
+  </tr>`;
+
+  html+='</tbody>';
+  document.getElementById('main-table').innerHTML=html;
+  document.getElementById('count-label').textContent=`${rows.length} combinaciones · ${showDays.length} días`;
+}
+
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
   const data=filtered();
   renderKPIs(data);
   if(viewMode==='todos') renderTableDias(data,false);
   else if(viewMode==='activos') renderTableDias(data,true);
-  else renderPivotCanal(data);
+  else if(viewMode==='canal') renderPivotCanal(data);
+  else renderPivotAdju(data);
 }
 
 // Mostrar loading
